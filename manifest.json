@@ -2,7 +2,7 @@
   "name": "Time Tracker",
   "short_name": "TimeTracker",
   "description": "Clock in/out app with lunch break tracking",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#667eea",
   "theme_color": "#667eea",
