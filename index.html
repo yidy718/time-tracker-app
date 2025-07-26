@@ -19,9 +19,24 @@
         </header>
 
         <main>
+            <div class="worker-info-section">
+                <div class="input-group">
+                    <label for="worker-name">Worker Name</label>
+                    <input type="text" id="worker-name" class="input-field" list="worker-list" placeholder="Enter worker name...">
+                    <datalist id="worker-list"></datalist>
+                </div>
+                
+                <div class="input-group">
+                    <label for="work-location">Work Location</label>
+                    <input type="text" id="work-location" class="input-field" list="location-list" placeholder="Enter work location...">
+                    <datalist id="location-list"></datalist>
+                </div>
+            </div>
+
             <div class="status-section">
                 <div id="status" class="status">Clocked Out</div>
                 <div id="session-time" class="session-time">00:00:00</div>
+                <div id="worker-display" class="worker-display"></div>
             </div>
 
             <div class="action-buttons">

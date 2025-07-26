@@ -43,6 +43,52 @@ main {
     box-shadow: 0 20px 40px rgba(0,0,0,0.1);
 }
 
+.worker-info-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group:last-child {
+    margin-bottom: 0;
+}
+
+.input-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 5px;
+}
+
+.input-field {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    transition: border-color 0.3s ease;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.worker-display {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 8px;
+    font-style: italic;
+}
+
 .status-section {
     text-align: center;
     margin-bottom: 30px;
@@ -187,8 +233,7 @@ main {
 
 .session-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
     padding: 12px;
     margin-bottom: 8px;
     background: #f8f9fa;
@@ -199,10 +244,19 @@ main {
 .session-date {
     font-weight: 600;
     color: #495057;
+    margin-bottom: 4px;
+}
+
+.session-worker {
+    color: #667eea;
+    font-weight: 500;
+    margin-bottom: 4px;
+    font-size: 0.85rem;
 }
 
 .session-duration {
     color: #6c757d;
+    font-weight: 600;
 }
 
 .week-grid {

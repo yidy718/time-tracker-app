@@ -20,7 +20,12 @@ class TimeTracker {
             sessionHistory: document.getElementById('session-history'),
             weekDisplay: document.getElementById('week-display'),
             exportCsvBtn: document.getElementById('export-csv-btn'),
-            exportJsonBtn: document.getElementById('export-json-btn')
+            exportJsonBtn: document.getElementById('export-json-btn'),
+            workerName: document.getElementById('worker-name'),
+            workLocation: document.getElementById('work-location'),
+            workerDisplay: document.getElementById('worker-display'),
+            workerList: document.getElementById('worker-list'),
+            locationList: document.getElementById('location-list')
         };
         
         this.init();
@@ -28,6 +33,7 @@ class TimeTracker {
     
     init() {
         this.loadState();
+        this.loadWorkerLocations();
         this.updateCurrentTime();
         this.updateDisplay();
         this.bindEvents();
@@ -40,6 +46,8 @@ class TimeTracker {
         this.elements.lunchBtn.addEventListener('click', () => this.toggleLunch());
         this.elements.exportCsvBtn.addEventListener('click', () => this.exportCSV());
         this.elements.exportJsonBtn.addEventListener('click', () => this.exportJSON());
+        this.elements.workerName.addEventListener('input', () => this.updateWorkerDisplay());
+        this.elements.workLocation.addEventListener('input', () => this.updateWorkerDisplay());
     }
     
     startCurrentTimeUpdate() {
@@ -60,9 +68,26 @@ class TimeTracker {
     }
     
     clockIn() {
+        const workerName = this.elements.workerName.value.trim();
+        const workLocation = this.elements.workLocation.value.trim();
+        
+        if (!workerName) {
+            alert('Please enter a worker name before clocking in.');
+            return;
+        }
+        
+        if (!workLocation) {
+            alert('Please enter a work location before clocking in.');
+            return;
+        }
+        
         this.isClocked = true;
         this.clockInTime = new Date();
         this.totalLunchTime = 0;
+        this.currentWorker = workerName;
+        this.currentLocation = workLocation;
+        
+        this.saveWorkerLocation(workerName, workLocation);
         
         this.elements.status.textContent = 'Clocked In';
         this.elements.status.classList.add('clocked-in');
@@ -70,7 +95,10 @@ class TimeTracker {
         this.elements.clockOutBtn.disabled = false;
         this.elements.lunchBtn.disabled = false;
         this.elements.lunchBtn.textContent = 'Start Lunch';
+        this.elements.workerName.disabled = true;
+        this.elements.workLocation.disabled = true;
         
+        this.updateWorkerDisplay();
         this.startSessionTimer();
         this.saveState();
     }
@@ -85,11 +113,13 @@ class TimeTracker {
         const clockOutTime = new Date();
         const duration = clockOutTime - this.clockInTime;
         
-        this.saveSession(this.clockInTime, clockOutTime, duration, this.totalLunchTime);
+        this.saveSession(this.clockInTime, clockOutTime, duration, this.totalLunchTime, this.currentWorker, this.currentLocation);
         
         this.isClocked = false;
         this.clockInTime = null;
         this.totalLunchTime = 0;
+        this.currentWorker = null;
+        this.currentLocation = null;
         
         this.elements.status.textContent = 'Clocked Out';
         this.elements.status.classList.remove('clocked-in', 'on-lunch');
@@ -97,6 +127,10 @@ class TimeTracker {
         this.elements.clockOutBtn.disabled = true;
         this.elements.lunchBtn.disabled = true;
         this.elements.sessionTime.textContent = '00:00:00';
+        this.elements.workerName.disabled = false;
+        this.elements.workLocation.disabled = false;
+        
+        this.updateWorkerDisplay();
         
         this.stopSessionTimer();
         this.updateDisplay();
@@ -160,7 +194,7 @@ class TimeTracker {
         this.saveState();
     }
     
-    saveSession(clockIn, clockOut, duration, lunchTime = 0) {
+    saveSession(clockIn, clockOut, duration, lunchTime = 0, worker = '', location = '') {
         const sessions = this.getSessions();
         const session = {
             id: Date.now(),
@@ -169,7 +203,9 @@ class TimeTracker {
             duration: duration,
             lunchTime: lunchTime,
             workTime: duration - lunchTime,
-            date: clockIn.toDateString()
+            date: clockIn.toDateString(),
+            worker: worker,
+            location: location
         };
         
         sessions.push(session);
@@ -246,12 +282,15 @@ class TimeTracker {
             
             const workTime = session.workTime || (session.duration - (session.lunchTime || 0));
             const lunchDisplay = session.lunchTime ? ` (${this.formatDuration(session.lunchTime)} lunch)` : '';
+            const workerInfo = session.worker ? `${session.worker}` : 'Unknown Worker';
+            const locationInfo = session.location ? ` @ ${session.location}` : '';
             
             div.innerHTML = `
                 <div class="session-date">
                     ${clockIn.toLocaleDateString()} ${clockIn.toLocaleTimeString('en-US', {hour12: false, hour: '2-digit', minute: '2-digit'})} - 
                     ${clockOut.toLocaleTimeString('en-US', {hour12: false, hour: '2-digit', minute: '2-digit'})}
                 </div>
+                <div class="session-worker">${workerInfo}${locationInfo}</div>
                 <div class="session-duration">${this.formatDuration(workTime)}${lunchDisplay}</div>
             `;
             
@@ -313,7 +352,9 @@ class TimeTracker {
             isOnLunch: this.isOnLunch,
             clockInTime: this.clockInTime ? this.clockInTime.toISOString() : null,
             lunchStartTime: this.lunchStartTime ? this.lunchStartTime.toISOString() : null,
-            totalLunchTime: this.totalLunchTime
+            totalLunchTime: this.totalLunchTime,
+            currentWorker: this.currentWorker,
+            currentLocation: this.currentLocation
         };
         localStorage.setItem('timeTrackerState', JSON.stringify(state));
     }
@@ -327,10 +368,17 @@ class TimeTracker {
             this.clockInTime = state.clockInTime ? new Date(state.clockInTime) : null;
             this.lunchStartTime = state.lunchStartTime ? new Date(state.lunchStartTime) : null;
             this.totalLunchTime = state.totalLunchTime || 0;
+            this.currentWorker = state.currentWorker || null;
+            this.currentLocation = state.currentLocation || null;
             
             if (this.isClocked && this.clockInTime) {
                 this.elements.clockInBtn.disabled = true;
                 this.elements.lunchBtn.disabled = false;
+                this.elements.workerName.disabled = true;
+                this.elements.workLocation.disabled = true;
+                
+                if (this.currentWorker) this.elements.workerName.value = this.currentWorker;
+                if (this.currentLocation) this.elements.workLocation.value = this.currentLocation;
                 
                 if (this.isOnLunch) {
                     this.elements.status.textContent = 'On Lunch Break';
@@ -344,6 +392,7 @@ class TimeTracker {
                     this.elements.clockOutBtn.disabled = false;
                 }
                 
+                this.updateWorkerDisplay();
                 this.startSessionTimer();
             }
         }
@@ -356,7 +405,7 @@ class TimeTracker {
             return;
         }
         
-        const headers = ['Date', 'Clock In', 'Clock Out', 'Total Time', 'Lunch Time', 'Work Time'];
+        const headers = ['Date', 'Worker', 'Location', 'Clock In', 'Clock Out', 'Total Time', 'Lunch Time', 'Work Time'];
         const csvContent = [
             headers.join(','),
             ...sessions.map(session => {
@@ -366,6 +415,8 @@ class TimeTracker {
                 
                 return [
                     `"${clockIn.toLocaleDateString()}"`,
+                    `"${session.worker || 'Unknown'}"`,
+                    `"${session.location || 'Unknown'}"`,
                     `"${clockIn.toLocaleTimeString()}"`,
                     `"${clockOut.toLocaleTimeString()}"`,
                     `"${this.formatDuration(session.duration)}"`,
@@ -413,6 +464,64 @@ class TimeTracker {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+    }
+    
+    loadWorkerLocations() {
+        const workers = this.getWorkers();
+        const locations = this.getLocations();
+        
+        workers.forEach(worker => {
+            const option = document.createElement('option');
+            option.value = worker;
+            this.elements.workerList.appendChild(option);
+        });
+        
+        locations.forEach(location => {
+            const option = document.createElement('option');
+            option.value = location;
+            this.elements.locationList.appendChild(option);
+        });
+    }
+    
+    saveWorkerLocation(worker, location) {
+        const workers = this.getWorkers();
+        const locations = this.getLocations();
+        
+        if (!workers.includes(worker)) {
+            workers.push(worker);
+            localStorage.setItem('workers', JSON.stringify(workers));
+            
+            const option = document.createElement('option');
+            option.value = worker;
+            this.elements.workerList.appendChild(option);
+        }
+        
+        if (!locations.includes(location)) {
+            locations.push(location);
+            localStorage.setItem('locations', JSON.stringify(locations));
+            
+            const option = document.createElement('option');
+            option.value = location;
+            this.elements.locationList.appendChild(option);
+        }
+    }
+    
+    getWorkers() {
+        const stored = localStorage.getItem('workers');
+        return stored ? JSON.parse(stored) : [];
+    }
+    
+    getLocations() {
+        const stored = localStorage.getItem('locations');
+        return stored ? JSON.parse(stored) : [];
+    }
+    
+    updateWorkerDisplay() {
+        if (this.isClocked && this.currentWorker && this.currentLocation) {
+            this.elements.workerDisplay.textContent = `${this.currentWorker} @ ${this.currentLocation}`;
+        } else {
+            this.elements.workerDisplay.textContent = '';
+        }
     }
 }
 
