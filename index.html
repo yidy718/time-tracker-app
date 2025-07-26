@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Time Tracker">
+    <title>Time Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23667eea'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='40' font-family='Arial'%3E⏰%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+    <!-- Setup Page -->
+    <div id="setup-page" class="page">
+        <div class="setup-container">
+            <div class="setup-header">
+                <div class="app-icon">⏰</div>
+                <h1>Time Tracker</h1>
+                <p>Let's get you set up to track your work time</p>
+            </div>
+            
+            <div class="setup-form">
+                <div class="form-group">
+                    <label for="setup-worker-name">Your Name</label>
+                    <input type="text" id="setup-worker-name" class="setup-input" list="worker-list" placeholder="Enter your name" autocomplete="name">
+                    <datalist id="worker-list"></datalist>
+                </div>
+                
+                <div class="form-group">
+                    <label for="setup-work-location">Work Location</label>
+                    <input type="text" id="setup-work-location" class="setup-input" list="location-list" placeholder="Enter work location" autocomplete="organization">
+                    <datalist id="location-list"></datalist>
+                </div>
+                
+                <button id="start-work-btn" class="start-btn">Start Working</button>
+            </div>
+            
+            <!-- Footer Credit -->
+            <footer class="setup-footer">
+                <div class="credit">Made with ❤️ by yidy</div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Main App Page -->
+    <div id="main-page" class="page hidden">
+        <div class="app-container">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-content">
+                    <div class="header-left">
+                        <div class="app-title">
+                            <div class="back-btn" id="back-to-setup">←</div>
+                            <div class="title-info">
+                                <h2>Time Tracker</h2>
+                                <div id="current-day" class="current-day"></div>
+                            </div>
+                        </div>
+                        <div id="current-time" class="current-time"></div>
+                    </div>
+                    <div class="header-right">
+                        <button id="menu-btn" class="menu-btn">⋮</button>
+                        <div id="menu-dropdown" class="menu-dropdown hidden">
+                            <button id="export-csv-menu" class="menu-item">📊 Export CSV</button>
+                            <button id="export-json-menu" class="menu-item">📋 Export JSON</button>
+                            <button id="share-email-menu" class="menu-item">📧 Email Report</button>
+                            <button id="share-menu" class="menu-item">📤 Share</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="app-main">
+                <!-- Worker Info Display -->
+                <div class="worker-card">
+                    <div class="worker-info">
+                        <div class="worker-avatar">👤</div>
+                        <div class="worker-details">
+                            <div id="worker-display" class="worker-name"></div>
+                            <div id="location-display" class="worker-location"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Section -->
+                <div class="status-card">
+                    <div id="status" class="status">Ready to Clock In</div>
+                    <div id="session-time" class="session-time">00:00:00</div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-section">
+                    <button id="clock-in-btn" class="action-btn primary">Clock In</button>
+                    <button id="lunch-btn" class="action-btn secondary" disabled>Start Lunch</button>
+                    <button id="clock-out-btn" class="action-btn danger" disabled>Clock Out</button>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-icon">📅</div>
+                        <div class="summary-content">
+                            <div class="summary-label">Today</div>
+                            <div id="daily-total" class="summary-value">00:00:00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card">
+                        <div class="summary-icon">📊</div>
+                        <div class="summary-content">
+                            <div class="summary-label">This Week</div>
+                            <div id="weekly-total" class="summary-value">00:00:00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Sessions -->
+                <div class="sessions-section">
+                    <h3>Recent Sessions</h3>
+                    <div id="session-history" class="session-list"></div>
+                </div>
+
+                <!-- Week View (Hidden by default, can be toggled) -->
+                <div id="week-view" class="week-section hidden">
+                    <h3>Week Overview</h3>
+                    <div id="week-display" class="week-grid"></div>
+                </div>
+            </main>
+            
+            <!-- Footer Credit -->
+            <footer class="app-footer">
+                <div class="credit">Made with ❤️ by yidy</div>
+            </footer>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful');
+                    }, function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
