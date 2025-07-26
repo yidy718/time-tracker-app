@@ -578,3 +578,26 @@ body {
 .page.slide-in-left {
     animation: slideInLeft 0.3s ease;
 }
+
+/* Footer Credit */
+.app-footer {
+    margin-top: 20px;
+    padding: 16px;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.credit {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    font-weight: 300;
+}
+
+/* Setup Page Footer */
+.setup-footer {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+}
