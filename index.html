@@ -14,8 +14,21 @@
 <body>
     <div class="container">
         <header>
-            <h1>Time Tracker</h1>
-            <div id="current-time" class="current-time"></div>
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>Time Tracker</h1>
+                    <div id="current-time" class="current-time"></div>
+                </div>
+                <div class="header-right">
+                    <button id="menu-btn" class="menu-btn">⋮</button>
+                    <div id="menu-dropdown" class="menu-dropdown hidden">
+                        <button id="export-csv-menu" class="menu-item">📊 Export CSV</button>
+                        <button id="export-json-menu" class="menu-item">📋 Export JSON</button>
+                        <button id="share-email-menu" class="menu-item">📧 Email Report</button>
+                        <button id="share-menu" class="menu-item">📤 Share</button>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <main>
@@ -67,13 +80,6 @@
                 <div id="week-display" class="week-grid"></div>
             </div>
 
-            <div class="export-section">
-                <h3>Export Data</h3>
-                <div class="export-buttons">
-                    <button id="export-csv-btn" class="btn btn-export">Export CSV</button>
-                    <button id="export-json-btn" class="btn btn-export">Export JSON</button>
-                </div>
-            </div>
         </main>
     </div>
 

@@ -25,7 +25,13 @@ class TimeTracker {
             workLocation: document.getElementById('work-location'),
             workerDisplay: document.getElementById('worker-display'),
             workerList: document.getElementById('worker-list'),
-            locationList: document.getElementById('location-list')
+            locationList: document.getElementById('location-list'),
+            menuBtn: document.getElementById('menu-btn'),
+            menuDropdown: document.getElementById('menu-dropdown'),
+            exportCsvMenu: document.getElementById('export-csv-menu'),
+            exportJsonMenu: document.getElementById('export-json-menu'),
+            shareEmailMenu: document.getElementById('share-email-menu'),
+            shareMenu: document.getElementById('share-menu')
         };
         
         this.init();
@@ -44,10 +50,16 @@ class TimeTracker {
         this.elements.clockInBtn.addEventListener('click', () => this.clockIn());
         this.elements.clockOutBtn.addEventListener('click', () => this.clockOut());
         this.elements.lunchBtn.addEventListener('click', () => this.toggleLunch());
-        this.elements.exportCsvBtn.addEventListener('click', () => this.exportCSV());
-        this.elements.exportJsonBtn.addEventListener('click', () => this.exportJSON());
         this.elements.workerName.addEventListener('input', () => this.updateWorkerDisplay());
         this.elements.workLocation.addEventListener('input', () => this.updateWorkerDisplay());
+        
+        this.elements.menuBtn.addEventListener('click', () => this.toggleMenu());
+        this.elements.exportCsvMenu.addEventListener('click', () => { this.exportCSV(); this.closeMenu(); });
+        this.elements.exportJsonMenu.addEventListener('click', () => { this.exportJSON(); this.closeMenu(); });
+        this.elements.shareEmailMenu.addEventListener('click', () => { this.shareEmail(); this.closeMenu(); });
+        this.elements.shareMenu.addEventListener('click', () => { this.shareNative(); this.closeMenu(); });
+        
+        document.addEventListener('click', (e) => this.handleOutsideClick(e));
     }
     
     startCurrentTimeUpdate() {
@@ -522,6 +534,105 @@ class TimeTracker {
         } else {
             this.elements.workerDisplay.textContent = '';
         }
+    }
+    
+    toggleMenu() {
+        this.elements.menuDropdown.classList.toggle('hidden');
+    }
+    
+    closeMenu() {
+        this.elements.menuDropdown.classList.add('hidden');
+    }
+    
+    handleOutsideClick(e) {
+        if (!this.elements.menuBtn.contains(e.target) && !this.elements.menuDropdown.contains(e.target)) {
+            this.closeMenu();
+        }
+    }
+    
+    shareEmail() {
+        const sessions = this.getSessions();
+        if (sessions.length === 0) {
+            alert('No data to share');
+            return;
+        }
+        
+        const reportData = this.generateEmailReport(sessions);
+        const subject = encodeURIComponent('Time Tracker Report');
+        const body = encodeURIComponent(reportData);
+        
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+    
+    shareNative() {
+        if (!navigator.share) {
+            this.shareEmail();
+            return;
+        }
+        
+        const sessions = this.getSessions();
+        if (sessions.length === 0) {
+            alert('No data to share');
+            return;
+        }
+        
+        const reportData = this.generateEmailReport(sessions);
+        
+        navigator.share({
+            title: 'Time Tracker Report',
+            text: reportData
+        }).catch(() => {
+            this.shareEmail();
+        });
+    }
+    
+    generateEmailReport(sessions) {
+        const today = new Date();
+        const currentWeek = this.getCurrentWeek();
+        
+        const todaySessions = sessions.filter(session => session.date === today.toDateString());
+        const weekSessions = sessions.filter(session => {
+            const sessionDate = new Date(session.clockIn);
+            return sessionDate >= currentWeek.start && sessionDate <= currentWeek.end;
+        });
+        
+        const todayTotal = todaySessions.reduce((sum, session) => {
+            const workTime = session.workTime || (session.duration - (session.lunchTime || 0));
+            return sum + workTime;
+        }, 0);
+        
+        const weekTotal = weekSessions.reduce((sum, session) => {
+            const workTime = session.workTime || (session.duration - (session.lunchTime || 0));
+            return sum + workTime;
+        }, 0);
+        
+        let report = `TIME TRACKER REPORT\n`;
+        report += `Generated: ${today.toLocaleDateString()} ${today.toLocaleTimeString()}\n\n`;
+        
+        report += `📊 SUMMARY\n`;
+        report += `Today's Work Time: ${this.formatDuration(todayTotal)}\n`;
+        report += `This Week's Total: ${this.formatDuration(weekTotal)}\n\n`;
+        
+        if (todaySessions.length > 0) {
+            report += `📅 TODAY'S SESSIONS\n`;
+            todaySessions.forEach(session => {
+                const clockIn = new Date(session.clockIn);
+                const clockOut = new Date(session.clockOut);
+                const workTime = session.workTime || (session.duration - (session.lunchTime || 0));
+                const worker = session.worker || 'Unknown';
+                const location = session.location || 'Unknown';
+                
+                report += `${worker} @ ${location}\n`;
+                report += `${clockIn.toLocaleTimeString()} - ${clockOut.toLocaleTimeString()}\n`;
+                report += `Work Time: ${this.formatDuration(workTime)}`;
+                if (session.lunchTime) {
+                    report += ` (${this.formatDuration(session.lunchTime)} lunch)`;
+                }
+                report += `\n\n`;
+            });
+        }
+        
+        return report;
     }
 }
 
