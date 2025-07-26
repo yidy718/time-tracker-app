@@ -7,9 +7,24 @@ class TimeTracker {
         this.sessionInterval = null;
         this.currentTimeInterval = null;
         this.totalLunchTime = 0;
+        this.currentWorker = null;
+        this.currentLocation = null;
         
         this.elements = {
+            // Pages
+            setupPage: document.getElementById('setup-page'),
+            mainPage: document.getElementById('main-page'),
+            
+            // Setup page elements
+            setupWorkerName: document.getElementById('setup-worker-name'),
+            setupWorkLocation: document.getElementById('setup-work-location'),
+            startWorkBtn: document.getElementById('start-work-btn'),
+            workerList: document.getElementById('worker-list'),
+            locationList: document.getElementById('location-list'),
+            
+            // Main page elements
             currentTime: document.getElementById('current-time'),
+            currentDay: document.getElementById('current-day'),
             status: document.getElementById('status'),
             sessionTime: document.getElementById('session-time'),
             clockInBtn: document.getElementById('clock-in-btn'),
@@ -19,13 +34,11 @@ class TimeTracker {
             weeklyTotal: document.getElementById('weekly-total'),
             sessionHistory: document.getElementById('session-history'),
             weekDisplay: document.getElementById('week-display'),
-            exportCsvBtn: document.getElementById('export-csv-btn'),
-            exportJsonBtn: document.getElementById('export-json-btn'),
-            workerName: document.getElementById('worker-name'),
-            workLocation: document.getElementById('work-location'),
             workerDisplay: document.getElementById('worker-display'),
-            workerList: document.getElementById('worker-list'),
-            locationList: document.getElementById('location-list'),
+            locationDisplay: document.getElementById('location-display'),
+            backToSetup: document.getElementById('back-to-setup'),
+            
+            // Menu elements
             menuBtn: document.getElementById('menu-btn'),
             menuDropdown: document.getElementById('menu-dropdown'),
             exportCsvMenu: document.getElementById('export-csv-menu'),
@@ -38,33 +51,123 @@ class TimeTracker {
     }
     
     init() {
-        this.loadState();
         this.loadWorkerLocations();
         this.updateCurrentTime();
+        this.updateCurrentDay();
         this.updateDisplay();
         this.bindEvents();
         this.startCurrentTimeUpdate();
+        this.checkInitialState();
+    }
+    
+    checkInitialState() {
+        // Check if user is already clocked in
+        const stored = localStorage.getItem('timeTrackerState');
+        if (stored) {
+            const state = JSON.parse(stored);
+            if (state.isClocked && state.currentWorker && state.currentLocation) {
+                // Go directly to main page if already working
+                this.currentWorker = state.currentWorker;
+                this.currentLocation = state.currentLocation;
+                this.showMainPage();
+                this.loadState();
+                return;
+            }
+        }
+        
+        // Show setup page by default
+        this.showSetupPage();
     }
     
     bindEvents() {
+        // Setup page events
+        this.elements.startWorkBtn.addEventListener('click', () => this.handleStartWork());
+        this.elements.setupWorkerName.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.handleStartWork();
+        });
+        this.elements.setupWorkLocation.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.handleStartWork();
+        });
+        
+        // Main page events
         this.elements.clockInBtn.addEventListener('click', () => this.clockIn());
         this.elements.clockOutBtn.addEventListener('click', () => this.clockOut());
         this.elements.lunchBtn.addEventListener('click', () => this.toggleLunch());
-        this.elements.workerName.addEventListener('input', () => this.updateWorkerDisplay());
-        this.elements.workLocation.addEventListener('input', () => this.updateWorkerDisplay());
+        this.elements.backToSetup.addEventListener('click', () => this.handleBackToSetup());
         
+        // Menu events
         this.elements.menuBtn.addEventListener('click', () => this.toggleMenu());
         this.elements.exportCsvMenu.addEventListener('click', () => { this.exportCSV(); this.closeMenu(); });
         this.elements.exportJsonMenu.addEventListener('click', () => { this.exportJSON(); this.closeMenu(); });
         this.elements.shareEmailMenu.addEventListener('click', () => { this.shareEmail(); this.closeMenu(); });
         this.elements.shareMenu.addEventListener('click', () => { this.shareNative(); this.closeMenu(); });
         
+        // Global events
         document.addEventListener('click', (e) => this.handleOutsideClick(e));
+    }
+    
+    showSetupPage() {
+        this.elements.setupPage.classList.remove('hidden');
+        this.elements.mainPage.classList.add('hidden');
+        
+        // Pre-fill with current worker info if available
+        if (this.currentWorker) {
+            this.elements.setupWorkerName.value = this.currentWorker;
+        }
+        if (this.currentLocation) {
+            this.elements.setupWorkLocation.value = this.currentLocation;
+        }
+    }
+    
+    showMainPage() {
+        this.elements.setupPage.classList.add('hidden');
+        this.elements.mainPage.classList.remove('hidden');
+        this.updateWorkerDisplay();
+    }
+    
+    handleStartWork() {
+        const workerName = this.elements.setupWorkerName.value.trim();
+        const workLocation = this.elements.setupWorkLocation.value.trim();
+        
+        if (!workerName) {
+            this.elements.setupWorkerName.focus();
+            this.elements.setupWorkerName.style.borderColor = '#dc3545';
+            setTimeout(() => {
+                this.elements.setupWorkerName.style.borderColor = '';
+            }, 2000);
+            return;
+        }
+        
+        if (!workLocation) {
+            this.elements.setupWorkLocation.focus();
+            this.elements.setupWorkLocation.style.borderColor = '#dc3545';
+            setTimeout(() => {
+                this.elements.setupWorkLocation.style.borderColor = '';
+            }, 2000);
+            return;
+        }
+        
+        this.currentWorker = workerName;
+        this.currentLocation = workLocation;
+        this.saveWorkerLocation(workerName, workLocation);
+        this.showMainPage();
+    }
+    
+    handleBackToSetup() {
+        if (this.isClocked) {
+            if (confirm('You are currently clocked in. Going back will clock you out. Continue?')) {
+                this.clockOut();
+            } else {
+                return;
+            }
+        }
+        this.showSetupPage();
     }
     
     startCurrentTimeUpdate() {
         this.currentTimeInterval = setInterval(() => {
             this.updateCurrentTime();
+            this.updateCurrentDay();
         }, 1000);
     }
     
@@ -76,30 +179,27 @@ class TimeTracker {
             minute: '2-digit',
             second: '2-digit'
         });
-        this.elements.currentTime.textContent = timeString;
+        if (this.elements.currentTime) {
+            this.elements.currentTime.textContent = timeString;
+        }
+    }
+    
+    updateCurrentDay() {
+        const now = new Date();
+        const dayString = now.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric'
+        });
+        if (this.elements.currentDay) {
+            this.elements.currentDay.textContent = dayString;
+        }
     }
     
     clockIn() {
-        const workerName = this.elements.workerName.value.trim();
-        const workLocation = this.elements.workLocation.value.trim();
-        
-        if (!workerName) {
-            alert('Please enter a worker name before clocking in.');
-            return;
-        }
-        
-        if (!workLocation) {
-            alert('Please enter a work location before clocking in.');
-            return;
-        }
-        
         this.isClocked = true;
         this.clockInTime = new Date();
         this.totalLunchTime = 0;
-        this.currentWorker = workerName;
-        this.currentLocation = workLocation;
-        
-        this.saveWorkerLocation(workerName, workLocation);
         
         this.elements.status.textContent = 'Clocked In';
         this.elements.status.classList.add('clocked-in');
@@ -107,10 +207,7 @@ class TimeTracker {
         this.elements.clockOutBtn.disabled = false;
         this.elements.lunchBtn.disabled = false;
         this.elements.lunchBtn.textContent = 'Start Lunch';
-        this.elements.workerName.disabled = true;
-        this.elements.workLocation.disabled = true;
         
-        this.updateWorkerDisplay();
         this.startSessionTimer();
         this.saveState();
     }
@@ -130,39 +227,17 @@ class TimeTracker {
         this.isClocked = false;
         this.clockInTime = null;
         this.totalLunchTime = 0;
-        this.currentWorker = null;
-        this.currentLocation = null;
         
-        this.elements.status.textContent = 'Clocked Out';
+        this.elements.status.textContent = 'Ready to Clock In';
         this.elements.status.classList.remove('clocked-in', 'on-lunch');
         this.elements.clockInBtn.disabled = false;
         this.elements.clockOutBtn.disabled = true;
         this.elements.lunchBtn.disabled = true;
         this.elements.sessionTime.textContent = '00:00:00';
-        this.elements.workerName.disabled = false;
-        this.elements.workLocation.disabled = false;
-        
-        this.updateWorkerDisplay();
         
         this.stopSessionTimer();
         this.updateDisplay();
         this.saveState();
-    }
-    
-    startSessionTimer() {
-        this.sessionInterval = setInterval(() => {
-            if (this.clockInTime) {
-                const elapsed = new Date() - this.clockInTime - this.totalLunchTime;
-                this.elements.sessionTime.textContent = this.formatDuration(elapsed);
-            }
-        }, 1000);
-    }
-    
-    stopSessionTimer() {
-        if (this.sessionInterval) {
-            clearInterval(this.sessionInterval);
-            this.sessionInterval = null;
-        }
     }
     
     toggleLunch() {
@@ -206,6 +281,30 @@ class TimeTracker {
         this.saveState();
     }
     
+    startSessionTimer() {
+        this.sessionInterval = setInterval(() => {
+            if (this.clockInTime) {
+                const elapsed = new Date() - this.clockInTime - this.totalLunchTime;
+                this.elements.sessionTime.textContent = this.formatDuration(elapsed);
+            }
+        }, 1000);
+    }
+    
+    stopSessionTimer() {
+        if (this.sessionInterval) {
+            clearInterval(this.sessionInterval);
+            this.sessionInterval = null;
+        }
+    }
+    
+    updateWorkerDisplay() {
+        if (this.currentWorker && this.currentLocation) {
+            this.elements.workerDisplay.textContent = this.currentWorker;
+            this.elements.locationDisplay.textContent = this.currentLocation;
+        }
+    }
+    
+    // Data Management Methods
     saveSession(clockIn, clockOut, duration, lunchTime = 0, worker = '', location = '') {
         const sessions = this.getSessions();
         const session = {
@@ -245,7 +344,9 @@ class TimeTracker {
             return sum + workTime;
         }, 0);
         
-        this.elements.dailyTotal.textContent = this.formatDuration(totalWorkTime);
+        if (this.elements.dailyTotal) {
+            this.elements.dailyTotal.textContent = this.formatDuration(totalWorkTime);
+        }
     }
     
     updateWeeklyTotal() {
@@ -260,7 +361,9 @@ class TimeTracker {
             return sum + workTime;
         }, 0);
         
-        this.elements.weeklyTotal.textContent = this.formatDuration(totalWorkTime);
+        if (this.elements.weeklyTotal) {
+            this.elements.weeklyTotal.textContent = this.formatDuration(totalWorkTime);
+        }
     }
     
     getCurrentWeek() {
@@ -280,6 +383,8 @@ class TimeTracker {
     }
     
     updateSessionHistory() {
+        if (!this.elements.sessionHistory) return;
+        
         const sessions = this.getSessions();
         const recentSessions = sessions.slice(-10).reverse();
         
@@ -311,6 +416,8 @@ class TimeTracker {
     }
     
     updateWeekView() {
+        if (!this.elements.weekDisplay) return;
+        
         const currentWeek = this.getCurrentWeek();
         const sessions = this.getSessions();
         const today = new Date().toDateString();
@@ -386,11 +493,6 @@ class TimeTracker {
             if (this.isClocked && this.clockInTime) {
                 this.elements.clockInBtn.disabled = true;
                 this.elements.lunchBtn.disabled = false;
-                this.elements.workerName.disabled = true;
-                this.elements.workLocation.disabled = true;
-                
-                if (this.currentWorker) this.elements.workerName.value = this.currentWorker;
-                if (this.currentLocation) this.elements.workLocation.value = this.currentLocation;
                 
                 if (this.isOnLunch) {
                     this.elements.status.textContent = 'On Lunch Break';
@@ -407,6 +509,72 @@ class TimeTracker {
                 this.updateWorkerDisplay();
                 this.startSessionTimer();
             }
+        }
+    }
+    
+    loadWorkerLocations() {
+        const workers = this.getWorkers();
+        const locations = this.getLocations();
+        
+        workers.forEach(worker => {
+            const option = document.createElement('option');
+            option.value = worker;
+            this.elements.workerList.appendChild(option);
+        });
+        
+        locations.forEach(location => {
+            const option = document.createElement('option');
+            option.value = location;
+            this.elements.locationList.appendChild(option);
+        });
+    }
+    
+    saveWorkerLocation(worker, location) {
+        const workers = this.getWorkers();
+        const locations = this.getLocations();
+        
+        if (!workers.includes(worker)) {
+            workers.push(worker);
+            localStorage.setItem('workers', JSON.stringify(workers));
+            
+            const option = document.createElement('option');
+            option.value = worker;
+            this.elements.workerList.appendChild(option);
+        }
+        
+        if (!locations.includes(location)) {
+            locations.push(location);
+            localStorage.setItem('locations', JSON.stringify(locations));
+            
+            const option = document.createElement('option');
+            option.value = location;
+            this.elements.locationList.appendChild(option);
+        }
+    }
+    
+    getWorkers() {
+        const stored = localStorage.getItem('workers');
+        return stored ? JSON.parse(stored) : [];
+    }
+    
+    getLocations() {
+        const stored = localStorage.getItem('locations');
+        return stored ? JSON.parse(stored) : [];
+    }
+    
+    // Menu and Export Methods
+    toggleMenu() {
+        this.elements.menuDropdown.classList.toggle('hidden');
+    }
+    
+    closeMenu() {
+        this.elements.menuDropdown.classList.add('hidden');
+    }
+    
+    handleOutsideClick(e) {
+        if (this.elements.menuBtn && this.elements.menuDropdown && 
+            !this.elements.menuBtn.contains(e.target) && !this.elements.menuDropdown.contains(e.target)) {
+            this.closeMenu();
         }
     }
     
@@ -464,90 +632,6 @@ class TimeTracker {
         
         const jsonContent = JSON.stringify(exportData, null, 2);
         this.downloadFile(jsonContent, 'time-tracker-data.json', 'application/json');
-    }
-    
-    downloadFile(content, filename, contentType) {
-        const blob = new Blob([content], { type: contentType });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    }
-    
-    loadWorkerLocations() {
-        const workers = this.getWorkers();
-        const locations = this.getLocations();
-        
-        workers.forEach(worker => {
-            const option = document.createElement('option');
-            option.value = worker;
-            this.elements.workerList.appendChild(option);
-        });
-        
-        locations.forEach(location => {
-            const option = document.createElement('option');
-            option.value = location;
-            this.elements.locationList.appendChild(option);
-        });
-    }
-    
-    saveWorkerLocation(worker, location) {
-        const workers = this.getWorkers();
-        const locations = this.getLocations();
-        
-        if (!workers.includes(worker)) {
-            workers.push(worker);
-            localStorage.setItem('workers', JSON.stringify(workers));
-            
-            const option = document.createElement('option');
-            option.value = worker;
-            this.elements.workerList.appendChild(option);
-        }
-        
-        if (!locations.includes(location)) {
-            locations.push(location);
-            localStorage.setItem('locations', JSON.stringify(locations));
-            
-            const option = document.createElement('option');
-            option.value = location;
-            this.elements.locationList.appendChild(option);
-        }
-    }
-    
-    getWorkers() {
-        const stored = localStorage.getItem('workers');
-        return stored ? JSON.parse(stored) : [];
-    }
-    
-    getLocations() {
-        const stored = localStorage.getItem('locations');
-        return stored ? JSON.parse(stored) : [];
-    }
-    
-    updateWorkerDisplay() {
-        if (this.isClocked && this.currentWorker && this.currentLocation) {
-            this.elements.workerDisplay.textContent = `${this.currentWorker} @ ${this.currentLocation}`;
-        } else {
-            this.elements.workerDisplay.textContent = '';
-        }
-    }
-    
-    toggleMenu() {
-        this.elements.menuDropdown.classList.toggle('hidden');
-    }
-    
-    closeMenu() {
-        this.elements.menuDropdown.classList.add('hidden');
-    }
-    
-    handleOutsideClick(e) {
-        if (!this.elements.menuBtn.contains(e.target) && !this.elements.menuDropdown.contains(e.target)) {
-            this.closeMenu();
-        }
     }
     
     shareEmail() {
@@ -611,7 +695,10 @@ class TimeTracker {
         
         report += `📊 SUMMARY\n`;
         report += `Today's Work Time: ${this.formatDuration(todayTotal)}\n`;
-        report += `This Week's Total: ${this.formatDuration(weekTotal)}\n\n`;
+        report += `This Week's Total: ${this.formatDuration(weekTotal)}\n`;
+        report += `Week: ${currentWeek.start.toLocaleDateString()} - ${currentWeek.end.toLocaleDateString()}\n\n`;
+        
+        report += this.generateWeeklyBreakdown(sessions, currentWeek);
         
         if (todaySessions.length > 0) {
             report += `📅 TODAY'S SESSIONS\n`;
@@ -633,6 +720,49 @@ class TimeTracker {
         }
         
         return report;
+    }
+    
+    generateWeeklyBreakdown(sessions, currentWeek) {
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        let breakdown = `📅 WEEKLY BREAKDOWN (Monday Start)\n`;
+        
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(currentWeek.start);
+            date.setDate(currentWeek.start.getDate() + i);
+            const dayString = date.toDateString();
+            
+            const daySessions = sessions.filter(session => session.date === dayString);
+            const dayTotal = daySessions.reduce((sum, session) => {
+                const workTime = session.workTime || (session.duration - (session.lunchTime || 0));
+                return sum + workTime;
+            }, 0);
+            
+            breakdown += `${dayNames[i]} ${date.getDate()}/${date.getMonth() + 1}: ${this.formatDuration(dayTotal)}`;
+            
+            if (daySessions.length > 0) {
+                breakdown += ` (${daySessions.length} session${daySessions.length > 1 ? 's' : ''})`;
+                
+                const workers = [...new Set(daySessions.map(s => s.worker || 'Unknown'))];
+                if (workers.length > 0) {
+                    breakdown += ` - ${workers.join(', ')}`;
+                }
+            }
+            breakdown += `\n`;
+        }
+        
+        return breakdown + `\n`;
+    }
+    
+    downloadFile(content, filename, contentType) {
+        const blob = new Blob([content], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     }
 }
 
